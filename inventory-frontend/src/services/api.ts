@@ -77,3 +77,12 @@ export const suppliersApi = {
   update: (id: string, data: any) => apiClient.patch(`/suppliers/${id}`, data),
   delete: (id: string) => apiClient.delete(`/suppliers/${id}`),
 };
+
+// Alerts API
+export const alertsApi = {
+  getAll: (params?: any) => apiClient.get('/alerts', { params }),
+  getById: (id: string) => apiClient.get(`/alerts/${id}`),
+  getStatistics: () => apiClient.get('/alerts/statistics'),
+  resolve: (id: string) => apiClient.post(`/alerts/${id}/resolve`),
+  delete: (id: string) => apiClient.delete(`/alerts/${id}`),
+};

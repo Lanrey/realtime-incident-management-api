@@ -99,3 +99,45 @@ export interface DashboardStats {
     totalValue: number;
   };
 }
+
+export type AlertType =
+  | 'LOW_STOCK'
+  | 'CAPACITY_WARNING'
+  | 'CAPACITY_EXCEEDED'
+  | 'ORDER_DELAYED'
+  | 'SYSTEM_ERROR';
+
+export type AlertSeverity = 'INFO' | 'WARNING' | 'ERROR' | 'CRITICAL';
+
+export interface Alert {
+  id: string;
+  type: AlertType;
+  severity: AlertSeverity;
+  message: string;
+  metadata?: {
+    productId?: string;
+    productName?: string;
+    productSku?: string;
+    warehouseId?: string;
+    warehouseName?: string;
+    currentQuantity?: number;
+    reorderThreshold?: number;
+    currentStock?: number;
+    capacity?: number;
+    purchaseOrderId?: string;
+    orderNumber?: string;
+    [key: string]: any;
+  };
+  isResolved: boolean;
+  resolvedAt?: string;
+  createdAt: string;
+}
+
+export interface AlertStatistics {
+  total: number;
+  unresolved: number;
+  critical: number;
+  byType: Record<string, number>;
+  bySeverity: Record<string, number>;
+  recent: Alert[];
+}
