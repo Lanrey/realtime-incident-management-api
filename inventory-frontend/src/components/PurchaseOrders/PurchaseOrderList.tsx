@@ -3,11 +3,13 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { purchaseOrdersApi } from '../../services/api';
 import { PurchaseOrder } from '../../types';
 import { format } from 'date-fns';
-import { CheckCircle, XCircle } from 'lucide-react';
+import { CheckCircle, XCircle, Plus } from 'lucide-react';
+import { PurchaseOrderFormModal } from './PurchaseOrderFormModal';
 
 export const PurchaseOrderList: React.FC = () => {
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState<string>('');
+  const [showCreateModal, setShowCreateModal] = useState(false);
   const queryClient = useQueryClient();
 
   const { data, isLoading } = useQuery({
@@ -57,9 +59,18 @@ export const PurchaseOrderList: React.FC = () => {
 
   return (
     <div>
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Purchase Orders</h1>
-        <p className="text-gray-600 mt-1">Track and manage purchase orders</p>
+      <div className="mb-8 flex justify-between items-start">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Purchase Orders</h1>
+          <p className="text-gray-600 mt-1">Track and manage purchase orders</p>
+        </div>
+        <button
+          onClick={() => setShowCreateModal(true)}
+          className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 flex items-center gap-2"
+        >
+          <Plus size={20} />
+          Create Purchase Order
+        </button>
       </div>
 
       {/* Filters */}
@@ -216,6 +227,17 @@ export const PurchaseOrderList: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Create Purchase Order Modal */}
+      {showCreateModal && (
+        <PurchaseOrderFormModal
+          onClose={() => setShowCreateModal(false)}
+          onSuccess={() => {
+            setShowCreateModal(false);
+            queryClient.invalidateQueries({ queryKey: ['purchase-orders'] });
+          }}
+        />
+      )}
     </div>
   );
 };
