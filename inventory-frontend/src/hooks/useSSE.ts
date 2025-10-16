@@ -36,13 +36,30 @@ interface SSEEvent {
 
 const playNotificationSound = () => {
   try {
-    const audio = new Audio('/notification.mp3');
-    audio.volume = 0.5;
-    audio.play().catch((error) => {
-      console.warn('Could not play notification sound:', error);
-    });
+    // Use Web Audio API to generate a pleasant notification beep
+    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+
+    // Create oscillator for the beep sound
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+
+    // Configure sound: pleasant notification tone
+    oscillator.frequency.setValueAtTime(800, audioContext.currentTime); // Higher frequency (800Hz)
+    oscillator.frequency.exponentialRampToValueAtTime(600, audioContext.currentTime + 0.1); // Descending tone
+
+    // Volume envelope for smooth sound
+    gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+    gainNode.gain.linearRampToValueAtTime(0.3, audioContext.currentTime + 0.01); // Quick attack
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2); // Smooth decay
+
+    // Play the sound
+    oscillator.start(audioContext.currentTime);
+    oscillator.stop(audioContext.currentTime + 0.2); // Short duration (200ms)
   } catch (error) {
-    console.warn('Audio not supported:', error);
+    console.warn('Could not play notification sound:', error);
   }
 };
 
