@@ -1,5 +1,6 @@
 import { prisma } from '../config/database';
 import { logger } from '../utils/logger';
+import { appEvents } from '../utils/eventEmitter';
 import { Prisma } from '@prisma/client';
 
 export interface QueryAlertsInput {
@@ -118,6 +119,13 @@ export class AlertService {
     });
 
     logger.info({ alertId: id }, 'Alert resolved');
+
+    // Emit alert resolved event for real-time updates
+    appEvents.emitAlertResolved({
+      id: alert.id,
+      type: alert.type,
+    });
+
     return alert;
   }
 
