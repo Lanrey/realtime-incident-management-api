@@ -1,5 +1,6 @@
 import { AlertService } from '../../services/alert.service';
 import { prisma } from '../../config/database';
+import { appEvents } from '../../utils/eventEmitter';
 
 describe('AlertService', () => {
   let alertService: AlertService;
@@ -272,6 +273,28 @@ describe('AlertService', () => {
           isResolved: true,
           resolvedAt: expect.any(Date),
         },
+      });
+    });
+
+    it('should emit alert resolved event via SSE', async () => {
+      const mockResolvedAlert = {
+        id: '1',
+        type: 'LOW_STOCK',
+        severity: 'WARNING',
+        message: 'Product low in stock',
+        metadata: {},
+        isResolved: true,
+        resolvedAt: new Date(),
+        createdAt: new Date(),
+      };
+
+      (prisma.alert.update as jest.Mock).mockResolvedValue(mockResolvedAlert);
+
+      await alertService.resolveAlert('1');
+
+      expect(appEvents.emitAlertResolved).toHaveBeenCalledWith({
+        id: '1',
+        type: 'LOW_STOCK',
       });
     });
   });
