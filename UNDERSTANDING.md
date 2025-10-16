@@ -17,11 +17,12 @@ The Inventory Management System is a sophisticated, event-driven application des
 
 ### Key Components:
 - **Frontend**: React-based dashboard for real-time inventory visualization
-- **Backend API**: Fastify-powered REST API with WebSocket support
+- **Backend API**: Fastify-powered REST API with Server-Sent Events (SSE) support
 - **Database**: PostgreSQL with Prisma ORM
 - **Cache**: Redis for performance optimization
 - **Message Queue**: RabbitMQ for async job processing
 - **Scheduler**: Cron-based jobs for periodic tasks
+- **Real-time Updates**: SSE for unidirectional server-to-client event streaming
 
 ---
 
@@ -177,6 +178,86 @@ The Inventory Management System is a sophisticated, event-driven application des
 - Warehouse capacity tracked
 - Full audit trail maintained
 - Alerts generated if needed
+- Real-time update broadcasted via SSE to all connected clients
+
+---
+
+### 3.5 Real-Time Event Broadcasting (SSE)
+
+**Trigger**: Any data change in the system (stock, alerts, orders, warehouse)
+
+**Steps**:
+```
+1. Service Layer Operation
+   - Service performs business logic
+   - Example: alertService.resolveAlert(id)
+   ↓
+2. Emit Internal Event
+   - Import: appEvents from eventEmitter
+   - Call: appEvents.emitAlertResolved({ id, type })
+   ↓
+3. Event Emitter Propagation
+   - EventEmitter broadcasts to registered listeners
+   - All connected SSE clients are listening
+   ↓
+4. SSE Route Handler
+   - Receives event from EventEmitter
+   - Formats as SSE message:
+     event: alert
+     data: {"id":"1","type":"LOW_STOCK","resolved":true}
+   ↓
+5. Message Delivery
+   - Sent to all connected clients via HTTP response stream
+   - Each client receives update in < 100ms
+   ↓
+6. Client Handling
+   - EventSource API receives message
+   - Frontend updates UI reactively
+   - No page refresh needed
+```
+
+**Event Types:**
+- `stock:update` → Product stock level changed
+- `alert:new` → New alert created
+- `alert:resolved` → Alert resolved
+- `order:created` → Purchase order created
+- `order:updated` → Purchase order status changed
+- `warehouse:updated` → Warehouse capacity changed
+
+**Connection Management:**
+```
+┌──────────────┐
+│    Client    │
+└──────┬───────┘
+       │ GET /api/events
+       ▼
+┌──────────────────┐
+│   SSE Endpoint   │
+│  - Set headers   │
+│  - Generate ID   │
+│  - Register      │
+└──────┬───────────┘
+       │
+       ▼
+┌──────────────────┐
+│  Active Clients  │
+│  Set<SSEClient>  │
+└──────┬───────────┘
+       │
+       ▼ On event
+┌──────────────────┐
+│  Broadcast to    │
+│  All Clients     │
+└──────────────────┘
+```
+
+**Happy Path Result**:
+- All connected clients receive updates instantly
+- No polling required
+- Automatic reconnection on disconnect
+- Heartbeat maintains connection alive
+- Low latency (< 100ms)
+- Low resource usage
 
 ---
 
