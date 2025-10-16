@@ -22,7 +22,7 @@ A modern, full-stack inventory management system built with microservices archit
 - **Database Migrations**: Prisma ORM with automated migrations
 - **Containerized Deployment**: Full Docker support with development and production configurations
 - **Type Safety**: Full TypeScript implementation across the stack
-- **RESTFul API**: Well-documented API endpoints with Zod validation
+- **RESTFul API**: Well-documented API endpoints with Joi validation
 
 ## 📋 Table of Contents
 
@@ -89,7 +89,7 @@ Souk follows a **microservices-inspired architecture** with separated frontend a
 
 #### 2. **API Layer (Backend Controllers & Routes)**
 - **Technology**: Fastify web framework
-- **Validation**: Zod schemas for request/response validation
+- **Validation**: Joi schemas for request/response validation
 - **Error Handling**: Centralized error handling middleware
 - **API Design**: RESTful endpoints following standard conventions
 
@@ -134,7 +134,7 @@ Key services include:
 #### Example 1: Creating a Purchase Order
 ```
 User → Frontend → POST /api/purchase-orders → Controller
-  → Validation (Zod) → PurchaseOrderService → Check Capacity
+  → Validation (Joi) → PurchaseOrderService → Check Capacity
   → Prisma → PostgreSQL (Insert) → Update Warehouse Stock
   → WebSocket Broadcast → Frontend Update → User Notification
 ```
@@ -349,6 +349,289 @@ docker-compose logs -f backend
 3. Monitor stock levels per warehouse
 4. Create purchase orders targeting specific warehouses
 5. System tracks capacity to prevent overstock
+
+### Dashboard Design Flow
+
+#### Warehouse Management Flow
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                      Warehouses Dashboard                        │
+├─────────────────────────────────────────────────────────────────┤
+│  Header: "Warehouses" + [Add Warehouse] Button                  │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  ┌────────────────────────────────────────────────────────┐    │
+│  │  Warehouse List Table                                   │    │
+│  │  ┌──────┬──────────┬────────────┬──────────┬─────────┐ │    │
+│  │  │ Name │ Location │ Capacity   │ Current  │ Actions │ │    │
+│  │  │      │          │            │ Stock    │         │ │    │
+│  │  ├──────┼──────────┼────────────┼──────────┼─────────┤ │    │
+│  │  │ WH-1 │ NYC      │ 10,000     │ 7,500    │ [View]  │ │    │
+│  │  │      │          │            │ (75%)    │ [Edit]  │ │    │
+│  │  │      │          │            │ 🟡       │ [Del]   │ │    │
+│  │  ├──────┼──────────┼────────────┼──────────┼─────────┤ │    │
+│  │  │ WH-2 │ LA       │ 5,000      │ 2,100    │ [View]  │ │    │
+│  │  │      │          │            │ (42%)    │ [Edit]  │ │    │
+│  │  │      │          │            │ 🟢       │ [Del]   │ │    │
+│  │  └──────┴──────────┴────────────┴──────────┴─────────┘ │    │
+│  └────────────────────────────────────────────────────────┘    │
+│                                                                  │
+│  Capacity Indicators:                                           │
+│  🟢 Green  (0-60%):  Normal capacity                            │
+│  🟡 Yellow (61-80%): Warning - approaching limit                │
+│  🔴 Red    (81-100%): Critical - near/at capacity               │
+└─────────────────────────────────────────────────────────────────┘
+
+User Actions:
+1. [Add Warehouse] → Opens Create Warehouse Form
+2. [View] → Navigate to Warehouse Detail Page
+3. [Edit] → Opens Edit Warehouse Form
+4. [Delete] → Confirmation modal → Delete warehouse
+
+┌─────────────────────────────────────────────────────────────────┐
+│              Warehouse Detail View (Click on [View])            │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  Warehouse: WH-1 NYC                        [Edit] [Back]       │
+│                                                                  │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │ Overview                                                 │   │
+│  │ • Name: Main Warehouse NYC                               │   │
+│  │ • Location: 123 Industrial Blvd, New York, NY           │   │
+│  │ • Capacity: 10,000 units                                │   │
+│  │ • Current Stock: 7,500 units (75%)                      │   │
+│  │ • Available Space: 2,500 units                          │   │
+│  │ • Status: Active 🟢                                      │   │
+│  └─────────────────────────────────────────────────────────┘   │
+│                                                                  │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │ Capacity Visualization                                   │   │
+│  │  ┌────────────────────────────────────────────────────┐ │   │
+│  │  │██████████████████████████████░░░░░░░░░░            │ │   │
+│  │  │ Used: 7,500       Available: 2,500                 │ │   │
+│  │  └────────────────────────────────────────────────────┘ │   │
+│  └─────────────────────────────────────────────────────────┘   │
+│                                                                  │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │ Products Stored in This Warehouse                        │   │
+│  │  ┌─────────┬──────────────┬──────────┬──────────────┐   │   │
+│  │  │ SKU     │ Product Name │ Quantity │ Reorder Level│   │   │
+│  │  ├─────────┼──────────────┼──────────┼──────────────┤   │   │
+│  │  │ PROD-01 │ Widget A     │ 2,500    │ 🟢 Normal    │   │   │
+│  │  │ PROD-02 │ Widget B     │ 5,000    │ 🟢 Normal    │   │   │
+│  │  │ PROD-03 │ Gadget C     │ 45       │ 🔴 Low       │   │   │
+│  │  └─────────┴──────────────┴──────────┴──────────────┘   │   │
+│  └─────────────────────────────────────────────────────────┘   │
+│                                                                  │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │ Recent Purchase Orders for This Warehouse                │   │
+│  │  ┌──────────────┬──────────┬────────┬─────────────────┐ │   │
+│  │  │ Order #      │ Product  │ Qty    │ Status          │ │   │
+│  │  ├──────────────┼──────────┼────────┼─────────────────┤ │   │
+│  │  │ PO-20241115-1│ Widget A │ 500    │ 🟡 In Transit   │ │   │
+│  │  │ PO-20241114-2│ Widget B │ 1,000  │ ✅ Arrived      │ │   │
+│  │  └──────────────┴──────────┴────────┴─────────────────┘ │   │
+│  └─────────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────┐
+│         Create/Edit Warehouse Form (Modal or New Page)          │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  Add New Warehouse                            [X] Close         │
+│                                                                  │
+│  ┌────────────────────────────────────────────────────────┐    │
+│  │ Warehouse Name *                                        │    │
+│  │ [_____________________________]                         │    │
+│  │                                                          │    │
+│  │ Location *                                              │    │
+│  │ [_____________________________]                         │    │
+│  │                                                          │    │
+│  │ Maximum Capacity (units) *                              │    │
+│  │ [_____________________________]                         │    │
+│  │ ℹ️  Total number of items this warehouse can hold      │    │
+│  │                                                          │    │
+│  │ Status                                                  │    │
+│  │ ☑ Active                                                │    │
+│  │                                                          │    │
+│  │                    [Cancel]  [Create Warehouse]         │    │
+│  └────────────────────────────────────────────────────────┘    │
+│                                                                  │
+│  Validation Rules:                                              │
+│  • All fields marked with * are required                        │
+│  • Capacity must be a positive integer                          │
+│  • Name and location must be unique                             │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Warehouse Management User Flow:**
+1. User navigates to "Warehouses" from sidebar
+2. System displays list of all warehouses with capacity indicators
+3. User can:
+   - **Add new warehouse**: Click [Add Warehouse] → Fill form → Submit
+   - **View details**: Click [View] → See warehouse overview, products, orders
+   - **Edit warehouse**: Click [Edit] → Modify details → Save
+   - **Delete warehouse**: Click [Delete] → Confirm → Remove (if no active stock)
+4. System validates:
+   - Warehouse capacity constraints
+   - Prevents deletion if products are stored
+   - Updates capacity indicators in real-time
+5. Dashboard shows color-coded capacity status:
+   - Green: Healthy capacity usage
+   - Yellow: Approaching capacity limit (80%+)
+   - Red: Critical capacity (90%+) or exceeded
+
+#### Supplier Management Flow
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                      Suppliers Dashboard                         │
+├─────────────────────────────────────────────────────────────────┤
+│  Header: "Suppliers" + [Add Supplier] Button                    │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  ┌────────────────────────────────────────────────────────┐    │
+│  │  Supplier List Table                                    │    │
+│  │  ┌─────────┬───────────────┬────────────┬────────────┐ │    │
+│  │  │ Name    │ Contact Email │ Phone      │ Actions    │ │    │
+│  │  ├─────────┼───────────────┼────────────┼────────────┤ │    │
+│  │  │ Acme Co │ sales@acme.com│ 555-0100   │ [View]     │ │    │
+│  │  │ 🟢      │               │            │ [Edit]     │ │    │
+│  │  │         │               │            │ [Deact.]   │ │    │
+│  │  ├─────────┼───────────────┼────────────┼────────────┤ │    │
+│  │  │ Widget  │ info@widget..│ 555-0200   │ [View]     │ │    │
+│  │  │ Supply  │               │            │ [Edit]     │ │    │
+│  │  │ 🟢      │               │            │ [Deact.]   │ │    │
+│  │  ├─────────┼───────────────┼────────────┼────────────┤ │    │
+│  │  │ Global  │ contact@globa│ 555-0300   │ [View]     │ │    │
+│  │  │ Parts   │               │            │ [Edit]     │ │    │
+│  │  │ 🔴      │               │            │ [Activate] │ │    │
+│  │  └─────────┴───────────────┴────────────┴────────────┘ │    │
+│  └────────────────────────────────────────────────────────┘    │
+│                                                                  │
+│  Status Indicators:                                             │
+│  🟢 Active - Available for purchase orders                      │
+│  🔴 Inactive - Not available for new orders                     │
+└─────────────────────────────────────────────────────────────────┘
+
+User Actions:
+1. [Add Supplier] → Opens Create Supplier Form
+2. [View] → Navigate to Supplier Detail Page
+3. [Edit] → Opens Edit Supplier Form
+4. [Deactivate/Activate] → Toggle supplier status
+
+┌─────────────────────────────────────────────────────────────────┐
+│              Supplier Detail View (Click on [View])             │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  Supplier: Acme Corporation                 [Edit] [Back]       │
+│                                                                  │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │ Contact Information                                      │   │
+│  │ • Company Name: Acme Corporation                         │   │
+│  │ • Email: sales@acmecorp.com                             │   │
+│  │ • Phone: +1 (555) 123-0100                              │   │
+│  │ • Address: 456 Supply Chain Ave, Los Angeles, CA       │   │
+│  │ • Status: Active 🟢                                      │   │
+│  │ • Joined: January 15, 2024                              │   │
+│  └─────────────────────────────────────────────────────────┘   │
+│                                                                  │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │ Supplier Performance Metrics                             │   │
+│  │  ┌────────────────────┬────────────────────────────┐    │   │
+│  │  │ Total Orders       │ 47                         │    │   │
+│  │  │ Active Orders      │ 3 (In Transit)             │    │   │
+│  │  │ Completed Orders   │ 42                         │    │   │
+│  │  │ Cancelled Orders   │ 2                          │    │   │
+│  │  │ Products Supplied  │ 12                         │    │   │
+│  │  │ Average Lead Time  │ 5 days                     │    │   │
+│  │  └────────────────────┴────────────────────────────┘    │   │
+│  └─────────────────────────────────────────────────────────┘   │
+│                                                                  │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │ Products Supplied by This Supplier                       │   │
+│  │  ┌─────────┬────────────────┬────────────┬───────────┐  │   │
+│  │  │ SKU     │ Product Name   │ Unit Price │ Lead Time │  │   │
+│  │  ├─────────┼────────────────┼────────────┼───────────┤  │   │
+│  │  │ PROD-01 │ Widget A       │ $29.99     │ 5 days    │  │   │
+│  │  │ PROD-02 │ Widget B       │ $34.99     │ 5 days    │  │   │
+│  │  │ PROD-05 │ Component X    │ $12.50     │ 7 days    │  │   │
+│  │  │ PROD-08 │ Assembly Kit Y │ $89.99     │ 10 days   │  │   │
+│  │  └─────────┴────────────────┴────────────┴───────────┘  │   │
+│  └─────────────────────────────────────────────────────────┘   │
+│                                                                  │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │ Purchase Order History                                   │   │
+│  │  ┌──────────────┬──────────┬────────┬─────────────────┐ │   │
+│  │  │ Order #      │ Product  │ Qty    │ Status          │ │   │
+│  │  ├──────────────┼──────────┼────────┼─────────────────┤ │   │
+│  │  │ PO-20241115-1│ Widget A │ 500    │ 🟡 In Transit   │ │   │
+│  │  │ PO-20241114-3│ Widget B │ 1,000  │ 🟡 In Transit   │ │   │
+│  │  │ PO-20241112-5│ Comp. X  │ 200    │ ✅ Arrived      │ │   │
+│  │  │ PO-20241110-2│ Kit Y    │ 50     │ ✅ Arrived      │ │   │
+│  │  │ PO-20241108-7│ Widget A │ 500    │ ✅ Arrived      │ │   │
+│  │  └──────────────┴──────────┴────────┴─────────────────┘ │   │
+│  │  [View All Orders]                                       │   │
+│  └─────────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────┐
+│         Create/Edit Supplier Form (Modal or New Page)           │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  Add New Supplier                             [X] Close         │
+│                                                                  │
+│  ┌────────────────────────────────────────────────────────┐    │
+│  │ Company Name *                                          │    │
+│  │ [_____________________________]                         │    │
+│  │                                                          │    │
+│  │ Contact Email *                                         │    │
+│  │ [_____________________________]                         │    │
+│  │ ℹ️  Primary contact email for orders                   │    │
+│  │                                                          │    │
+│  │ Contact Phone *                                         │    │
+│  │ [_____________________________]                         │    │
+│  │                                                          │    │
+│  │ Address                                                 │    │
+│  │ [_____________________________]                         │    │
+│  │ [_____________________________]                         │    │
+│  │ [_____________________________]                         │    │
+│  │                                                          │    │
+│  │ Status                                                  │    │
+│  │ ☑ Active (Available for purchase orders)               │    │
+│  │                                                          │    │
+│  │                    [Cancel]  [Create Supplier]          │    │
+│  └────────────────────────────────────────────────────────┘    │
+│                                                                  │
+│  Validation Rules:                                              │
+│  • All fields marked with * are required                        │
+│  • Email must be valid format                                   │
+│  • Phone must be valid format                                   │
+│  • Company name should be unique                                │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Supplier Management User Flow:**
+1. User navigates to "Suppliers" from sidebar
+2. System displays list of all suppliers with status indicators
+3. User can:
+   - **Add new supplier**: Click [Add Supplier] → Fill form → Submit
+   - **View details**: Click [View] → See supplier info, products, order history
+   - **Edit supplier**: Click [Edit] → Modify contact details → Save
+   - **Activate/Deactivate**: Click [Deactivate/Activate] → Toggle status
+4. System validates:
+   - Valid email and phone formats
+   - Prevents deletion if supplier has active purchase orders
+   - Prevents deactivation if supplier is default for active products
+5. Integration with Products:
+   - When creating a product, user selects default supplier from dropdown
+   - Automatic purchase orders use product's default supplier
+   - Supplier detail page shows all products they supply
+6. Integration with Purchase Orders:
+   - Supplier detail page shows order history and performance metrics
+   - Can filter purchase orders by supplier
+   - Active orders (PENDING/IN_TRANSIT) highlighted in supplier view
 
 ### Advanced Features
 
@@ -771,6 +1054,19 @@ The system creates alerts for:
 - **REORDER_FAILED**: When automatic reorder fails for any reason
 
 ## 🗄️ Database Schema
+
+### Entity Relationship Diagram (ERD)
+
+View the complete database schema and entity relationships:
+
+**[📊 Interactive ERD on diagrams.net](https://app.diagrams.net/?&highlight=0000ff&edit=_blank&layers=1&nav=1&title=exported_from_idea.drawio#R7Ztbb9s2FMff9ykEDwjaB9e6%2B6K4QHpZN2CXbumw9SmgJdriQokqSTV2P%2F0OSdmWY9lz7EF1g8AITJFHFHX0%2F51zJMWX2fwdR0X6C0swtZL5uGN3rGShv2acJOOOYxrX5AuGDdVdkgQLPSAZo5IUZiNmeY5jqduIc3ZnuqeMmlkKNMN6XtW4jhHFunuC4tsZZ2UOVjnLccfKkEy1oUhRwu5U8%2BV3lnXJGZOqAc1s%2FhpTaqn1gV1vu1sfj%2BNc7jLI4YS9tRHYf8Zc4rlpIlrC6i6ojApLyAUs9eJTyWSUIT4j%2Bcgu5lWzK1kx8mETdpVdRMksH8UwI%2BaR2eNiBn8wz0Q1bgpORIZuMjLjSBKWCzXUmyyNesWylXJLKI%2BbSRzz1VuONi%2FKUh%2B1Fkpy3E0xmaVy5LwIayux4hTHt6LMRnCOPE4Rfxb6z%2FX6uJ7dmpKciBQnN0iOLEkyLCTKCuuOyFRvWl%2FgGtV3WJ3LTY4yvJ7XDYKNiSmbCZgR3FTv5YxSOJgSwcFHhHG4UoevEBUFJWAvJC7ETQxSgx0JXKMZ5u14nSRrv3jh8%2FVBO9WUHSU%2BAkxcKQWNQVSR1tKY4qmMGIxOKZAwJZRGU5ZLTaPj6%2FYPKCN0Mf4R089YzRGlMqNjJ9JM4WRsRxVHdhSzjMTwTdEE01cr8F4zyvhYwRcJydkt%2FoskgKATdQw3mpx3mGVY8oWlEAmGHQuChD8AuO60cccdhB3LnD5seC4EAQgAs2qvNYM9A2Ezkf22iYQoxGXrFMpFAaRcgGwj3alXoTrXXRuCx%2BAJIhdbuywHmncDMgSE2m3o4IqgBEk0sv4RLJ%2FUh4j4AwsGSgLFTiC6Y5Rv4FoNXtXRe%2BZtgB5zjGSzSTukLU%2F3m0ZsMNCEdV17jZgzGJ6OmNs2YgVnSRlLCL8MUk%2FbqFVH%2FynZxuAO3JCyUuCmwU8lyqVmrpYpVrkMCflnkSiZP4n8lDzi%2B1rl%2FWG4Fvmwvxa5E9pHidz5SiJvXd7ittzWrinE7vdC0R5zUqhSraEOw4wnmH9IIcKnULE3yr4y%2Bn0vGhglH4CIN2ghGg3KnMj3nMSwgoSVE4oBURwTAcvaTERXsSSfcWMaSvAUlVRel7qy40387slCq5UYgp8S1UkM%2B4FG2HHcGsLBGmHPHRyFsN86wqUq0AW%2B0SJvnWR91F%2FLbIL5tpr3ZDGxB4KDMtxv6sC4mXjJJKKvmZD7YQV0ZCnq5anxoe5uLk61wRvgbzefeF7gWAHKOYGLvt8YxbIEZA4xzZnEDbeiEHFKyd7hHHOT2BsCz1NUaSmqdB3f03Fl2F%2BXBm5gr%2BOKbx9XGthtxxVd995k4OIMbL6ZAni54A%2F37lWX%2FbtvV%2FeWzgCQaC5AphCF8rihcClAm4xnOHm1eFCef8LtYNzc0NDm2P5gjZtXv90MwqNwC1vHrcqHrYPWXHXHcEEhN73NUKE7R9%2BncKm2R1GSQDnenKp2F8dPOaq1HOU5TQ9p%2FofnoEHb1KxSwZlgQ1mMmu9UY1SgeFd2iUuuvHatUm6jwRM5Z0FO39l6f3AyNziZKW7UVx2VDZIEg5s8vHoQKsH5WK4eGVW%2BvHf%2BTqSmvNZjjMuUzViO6NtlX5Qg9b5MuUm9l7pSbz6NL3CemK0JqPlWbRq3u5WXjNu%2BD4bqE%2BE5kX%2BP7Rf9wNbtj9C2bdN%2BMx9XjYVq5OAQZRrY1cbHsWNs1YYx1i1l3XgNKp%2FX62nV5pgiRYd5h1t3%2F3ISmAbOCS30aMGAMFEb0wd5r3p1UTE0V7mvSofeTivffYiVt8%2FK2WF12dOLXnmit3bFf6lKS92rPTSvZFaLydWLbzSh5v12Jbx14U2SlbbU3j%2BrKSPI7OSL3sdeEldDdpvnumaq51%2B7yzknNH4I%2B0dh5B%2BPUXAmGLmPBiNnaGrzfn8vIG6j0anKd8NN5fuHKL9%2BX9m69h3bOUn7zgO072xqPzwT7Qf2wdrX2eaMtb8M6PukP2wyOVX4g03dO4fofvu1RPuR3zyNP1L79gO0759n%2BTTwvEcS98PgkVRP94on%2B8yLJ0fBo9zgHgdReDxE55JAwAWHQuSedwLpLsuB4V5AusPBA6z8%2FVYDv9Hq5JuQeykpPIQj8RVzUdfpV9loeBxJ7vEkBd9eKXbm6ajrDL7ebYjjb2rfPfvbkK6j%2FldeuWJwnPi9B4jfPs9a7PGI3xu4j6UYszdJ8s68GvPsqhrzD8Losmd%2BJKLdsvpdy8t%2FAQ%3D%3D#%7B%22pageId%22%3A%22e3cvxCK0qKaoln1zC0ir%22%7D)**
+
+This ERD visualizes:
+- All database entities (tables) with their fields and data types
+- Primary and foreign key relationships
+- One-to-many and many-to-many relationships
+- Cardinality and relationship constraints
+- Junction tables (e.g., ProductStock linking Products and Warehouses)
 
 ### Data Modeling Choices
 
@@ -1217,21 +1513,224 @@ npm run lint             # Run linter
 
 ## 🧪 Testing
 
+Souk includes comprehensive test suites for both backend and frontend, covering unit tests, integration tests, and edge cases.
+
+### Testing Infrastructure
+
+#### Backend Testing (Jest + Supertest)
+- **Framework**: Jest 29 with ts-jest
+- **HTTP Testing**: Supertest for integration tests
+- **Coverage**: Configured for comprehensive code coverage reporting
+- **Test Types**: Unit tests for services, integration tests for routes/endpoints
+
+#### Frontend Testing (Vitest + React Testing Library)
+- **Framework**: Vitest 3 with jsdom environment
+- **Component Testing**: React Testing Library 16
+- **User Interactions**: @testing-library/user-event
+- **Coverage**: v8 coverage provider
+
 ### Backend Tests
+
+#### Running Tests
 ```bash
-# Run tests
+# Run all tests
 cd inventory-backend
 npm test
 
-# Run with coverage
+# Run with coverage report
 npm test -- --coverage
 
-# Watch mode
+# Run specific test file
+npm test alert.service.test
+
+# Watch mode (re-runs on file changes)
 npm test -- --watch
 
 # Using Docker
 docker-compose exec backend npm test
 ```
+
+#### Test Structure
+```
+inventory-backend/src/__tests__/
+├── setup.ts                          # Global test configuration
+├── unit/                             # Unit tests
+│   ├── alert.service.test.ts         # Alert service tests
+│   ├── product.service.test.ts       # Product service tests
+│   └── purchaseOrder.service.test.ts # Purchase order service tests
+└── integration/                      # Integration tests
+    ├── alert.routes.test.ts          # Alert API endpoint tests
+    ├── product.routes.test.ts        # Product API endpoint tests
+    └── purchaseOrder.routes.test.ts  # Purchase order API endpoint tests
+```
+
+#### Test Coverage
+
+**Unit Tests** - Business Logic Layer:
+- ✅ Alert Service (13 test cases)
+  - Pagination and filtering (type, severity, resolved status)
+  - Alert statistics aggregation
+  - Resolve by ID and bulk resolve by type
+  - Product and warehouse alert queries
+  - Edge cases: empty results, null values, metadata filtering
+
+- ✅ Product Service (15 test cases)
+  - CRUD operations with validation
+  - Search and filtering (by supplier, status, search term)
+  - Stock level queries and calculations
+  - Caching behavior (Redis integration)
+  - Low stock product detection with deficit calculation
+  - Edge cases: pending order checks, capacity constraints
+
+- ✅ Purchase Order Service (18 test cases)
+  - Order creation with capacity validation
+  - Quantity adjustment based on warehouse capacity
+  - Expected arrival date calculation
+  - Order number collision retry mechanism
+  - Status transitions (PENDING → IN_TRANSIT → ARRIVED)
+  - Cancellation validation
+  - Statistics aggregation
+  - Edge cases: large quantities, concurrent operations, invalid data
+
+**Integration Tests** - API Layer:
+- ✅ Alert Endpoints (15 test cases)
+  - GET /api/alerts with pagination and filtering
+  - GET /api/alerts/statistics for dashboard
+  - GET /api/alerts/:id for individual alerts
+  - POST /api/alerts/:id/resolve
+  - DELETE /api/alerts/:id
+  - Error handling and validation
+  - Edge cases: concurrent resolves, invalid parameters
+
+- ✅ Product Endpoints (17 test cases)
+  - GET /api/products with search and filters
+  - POST /api/products with validation
+  - GET /api/products/:id with caching
+  - GET /api/products/:id/stock
+  - PUT /api/products/:id
+  - DELETE /api/products/:id with constraint checks
+  - GET /api/products/low-stock
+  - Edge cases: duplicate SKU, missing supplier, special characters
+
+- ✅ Purchase Order Endpoints (18 test cases)
+  - GET /api/purchase-orders with multi-filter support
+  - POST /api/purchase-orders with capacity validation
+  - GET /api/purchase-orders/:id
+  - PUT /api/purchase-orders/:id
+  - POST /api/purchase-orders/:id/arrive (RabbitMQ integration)
+  - POST /api/purchase-orders/:id/cancel
+  - GET /api/purchase-orders/pending
+  - GET /api/purchase-orders/statistics
+  - Edge cases: order number collision, concurrent cancellations
+
+**Total Backend Coverage**: 76 test cases covering critical business logic and API endpoints
+
+### Frontend Tests
+
+#### Running Tests
+```bash
+# Run all tests
+cd inventory-frontend
+npm test
+
+# Run with UI (interactive test explorer)
+npm run test:ui
+
+# Run with coverage report
+npm run test:coverage
+
+# Watch mode (default with npm test)
+npm test
+
+# Run specific test file
+npm test AlertCard.test
+```
+
+#### Test Structure
+```
+inventory-frontend/src/tests/
+├── setup.ts              # Global test configuration & mocks
+├── testUtils.tsx         # Custom render with providers
+└── unit/                 # Component unit tests
+    └── AlertCard.test.tsx    # Alert card component tests
+```
+
+#### Test Coverage
+
+**Unit Tests** - React Components:
+- ✅ AlertCard Component (24 test cases)
+  - Severity level rendering (CRITICAL, ERROR, WARNING, INFO)
+  - Alert type icons and labels
+  - Metadata display (stock levels, capacity, order numbers)
+  - Action buttons (resolve, delete)
+  - Resolved state handling
+  - Timestamp formatting (relative and absolute)
+  - Edge cases: missing metadata, null values, capacity calculations
+  - User interactions: button clicks, callbacks
+
+**Test Utilities**:
+- Custom render function with React Query and Router providers
+- Mock window APIs (matchMedia, IntersectionObserver, ResizeObserver)
+- Test query client configuration for deterministic tests
+
+**Total Frontend Coverage**: 24 test cases with plans for comprehensive component coverage
+
+### Test Configuration
+
+#### Backend (jest.config.js)
+```javascript
+{
+  preset: 'ts-jest',
+  testEnvironment: 'node',
+  collectCoverageFrom: ['src/**/*.ts', '!src/**/*.d.ts', '!src/index.ts'],
+  coverageReporters: ['text', 'lcov', 'html'],
+  setupFilesAfterEnv: ['<rootDir>/src/__tests__/setup.ts'],
+  testTimeout: 10000
+}
+```
+
+#### Frontend (vite.config.ts)
+```javascript
+{
+  test: {
+    globals: true,
+    environment: 'jsdom',
+    setupFiles: './src/tests/setup.ts',
+    css: true,
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'json', 'html']
+    }
+  }
+}
+```
+
+### Key Testing Decisions
+
+1. **Mocking Strategy**
+   - Database: Prisma Client fully mocked in unit tests
+   - Cache: Redis mocked for predictable tests
+   - Queue: RabbitMQ publish calls mocked
+   - External Services: Capacity manager mocked to isolate tests
+
+2. **Test Data Isolation**
+   - Each test uses fresh mock data
+   - No shared state between tests
+   - Automatic cleanup after each test
+
+3. **Edge Case Coverage**
+   - Null/undefined handling
+   - Empty result sets
+   - Concurrent operations
+   - Boundary conditions (capacity limits, thresholds)
+   - Invalid input validation
+   - Error scenarios
+
+4. **Integration Test Approach**
+   - Use Fastify test injection (no actual HTTP server)
+   - Mock Prisma but test full request/response cycle
+   - Verify request validation and error handling
+   - Test endpoint security and authorization (when implemented)
 
 ### Manual API Testing
 ```bash
@@ -1245,7 +1744,41 @@ curl http://localhost:3000/api/products
 curl -X POST http://localhost:3000/api/products \
   -H "Content-Type: application/json" \
   -d '{"sku":"TEST-001","name":"Test Product","reorderThreshold":10,"defaultSupplierId":"uuid"}'
+
+# Get alert statistics
+curl http://localhost:3000/api/alerts/statistics
+
+# Create purchase order
+curl -X POST http://localhost:3000/api/purchase-orders \
+  -H "Content-Type: application/json" \
+  -d '{
+    "productId":"product-uuid",
+    "supplierId":"supplier-uuid",
+    "warehouseId":"warehouse-uuid",
+    "quantityOrdered":100
+  }'
 ```
+
+### CI/CD Integration
+
+Tests are designed to run in CI/CD pipelines:
+```bash
+# Backend CI
+cd inventory-backend && npm test -- --coverage --ci
+
+# Frontend CI
+cd inventory-frontend && npm test -- --coverage --run
+```
+
+### Future Testing Enhancements
+
+Planned improvements:
+- [ ] E2E tests with Playwright or Cypress
+- [ ] Load testing with k6 or Artillery
+- [ ] API contract testing with Pact
+- [ ] Visual regression testing for UI components
+- [ ] Mutation testing for code quality assessment
+- [ ] Performance benchmarking for critical paths
 
 ## 🔧 Troubleshooting
 
@@ -1326,6 +1859,177 @@ docker system prune -a --volumes
 # Restart fresh
 docker-compose up -d --build
 ```
+
+## 🆕 Recent Changes and Decisions
+
+### Latest Updates (October 2024)
+
+#### 1. Comprehensive Testing Infrastructure
+**What Changed**: Added full test suites for both backend and frontend with 100+ test cases
+
+**Backend Testing**:
+- Jest 29 + ts-jest + Supertest configuration
+- 76 test cases across services and API endpoints
+- Unit tests for Alert, Product, and PurchaseOrder services
+- Integration tests for all major API routes
+- Mock setup for Prisma, Redis, and RabbitMQ
+
+**Frontend Testing**:
+- Vitest 3 + React Testing Library setup
+- Custom test utilities with provider wrappers
+- 24 test cases for AlertCard component
+- Mock configuration for browser APIs
+
+**Why**: Ensure code quality, prevent regressions, and provide confidence in deployments. Testing infrastructure enables CI/CD pipeline integration and faster development cycles.
+
+**Impact**:
+- Developers can run `npm test` to validate changes
+- Coverage reports identify untested code paths
+- Automated tests catch bugs before production
+- Documentation through test cases
+
+#### 2. Enhanced Alert System
+**What Changed**: Implemented granular alert management with detailed metadata
+
+**Features**:
+- 5 alert types: LOW_STOCK, CAPACITY_WARNING, CAPACITY_EXCEEDED, ORDER_DELAYED, SYSTEM_ERROR
+- 4 severity levels: INFO, WARNING, ERROR, CRITICAL
+- Rich metadata support (product details, warehouse info, stock levels, capacity percentages)
+- Backend API endpoints: GET /api/alerts, GET /api/alerts/statistics, POST /api/alerts/:id/resolve
+- Frontend components: AlertCard, AlertList, AlertsDashboardWidget
+- Real-time notification badge in navigation with pulse animation for critical alerts
+
+**Why**: Previous alert system only provided counts. Users needed detailed information about each alert to take action.
+
+**Impact**:
+- Users can see exactly which product, in which warehouse, needs attention
+- Filtering by type/severity helps prioritize critical issues
+- Dashboard shows alert breakdown by type and severity
+- 30-second auto-refresh keeps information current
+
+#### 3. Manual Purchase Order Creation
+**What Changed**: Added UI for manually creating purchase orders
+
+**Features**:
+- PurchaseOrderFormModal component with full form validation
+- Product selection with auto-populated supplier and quantity
+- Product info card showing unit price, lead time, and reorder quantity
+- Warehouse selection with available capacity display
+- Quantity input with suggested reorder quantity
+- Expected arrival date auto-calculation based on lead time
+- Total cost calculator
+- Integration with existing purchase order list
+
+**Why**: System only supported automatic purchase orders. Users needed ability to manually order products outside of reorder threshold triggers (e.g., seasonal demand, special orders).
+
+**Impact**:
+- Users can create orders on-demand without waiting for automatic triggers
+- Flexibility for special circumstances and manual inventory planning
+- Maintains capacity validation to prevent warehouse overstock
+- Audit trail preserved for manual orders
+
+#### 4. Stock Adjustment Threshold Indicators
+**What Changed**: Added visual indicators in stock adjustment modal showing whether stock is above/below reorder threshold
+
+**Features**:
+- Color-coded cards: Green (normal), Yellow (low), Red (out of stock)
+- Status badges with icons (CheckCircle, AlertTriangle, X)
+- Percentage of threshold calculation
+- Visual legend explaining color meanings
+- Per-warehouse threshold comparison
+
+**Why**: When adjusting stock, users couldn't tell if they were bringing stock above/below critical thresholds without manual calculation.
+
+**Impact**:
+- Instant visual feedback on stock health
+- Helps users make informed adjustment decisions
+- Reduces errors in stock management
+- Improves user experience with clear visual cues
+
+#### 5. Warehouse and Supplier Management UI
+**What Changed**: Implemented complete CRUD interfaces for warehouses and suppliers
+
+**Warehouse Features**:
+- List view with capacity indicators (color-coded: green 0-60%, yellow 61-80%, red 81-100%)
+- Detail view showing overview, capacity visualization, products stored, recent orders
+- Create/Edit modal form with validation
+- Capacity tracking and percentage calculations
+
+**Supplier Features**:
+- List view with active/inactive status indicators
+- Detail view showing contact info, performance metrics, products supplied, order history
+- Create/Edit modal form
+- Status toggle (activate/deactivate)
+
+**Why**: Initial focus was on products and purchase orders. Warehouses and suppliers needed full management interfaces for complete inventory control.
+
+**Impact**:
+- Users can manage entire inventory ecosystem from UI
+- Warehouse capacity warnings prevent overstock situations
+- Supplier performance tracking aids procurement decisions
+- Complete audit trail of supplier orders
+
+#### 6. Database Schema Documentation
+**What Changed**: Added comprehensive database schema documentation with ERD link
+
+**Additions**:
+- Interactive ERD on diagrams.net showing all entities and relationships
+- Data modeling choices explained (why UUID keys, denormalization decisions, etc.)
+- Design decisions summary table comparing alternatives
+- Relationship cardinality visualization
+
+**Why**: Complex database schema needed clear documentation for onboarding and maintenance.
+
+**Impact**:
+- New developers understand schema quickly
+- Design decisions are documented for future reference
+- ERD serves as single source of truth for database structure
+- Easier to identify schema improvements
+
+### Key Technical Decisions
+
+#### Decision 1: Jest vs Vitest for Backend
+**Chosen**: Jest
+**Reason**: Mature ecosystem, excellent TypeScript support, familiar to most developers, supertest integration
+**Alternative Considered**: Vitest (chose for frontend instead)
+
+#### Decision 2: Prisma Mocking Strategy
+**Chosen**: Full mock of Prisma Client in unit tests
+**Reason**: Fast test execution, no database required, deterministic results
+**Alternative Considered**: Test database with docker-compose (would slow tests significantly)
+**Trade-off**: Mocks must be kept in sync with actual Prisma behavior
+
+#### Decision 3: Frontend Test Framework
+**Chosen**: Vitest + React Testing Library
+**Reason**: Vite-native, faster than Jest for frontend, modern and actively maintained
+**Alternative Considered**: Jest (slower build times with Vite)
+
+#### Decision 4: Alert Metadata Structure
+**Chosen**: Flexible JSON field with optional typed metadata
+**Reason**: Allows different alert types to store different information without rigid schema
+**Alternative Considered**: Separate tables per alert type (overly complex)
+**Trade-off**: Less type safety, requires frontend validation of metadata structure
+
+#### Decision 5: Manual Purchase Order Flow
+**Chosen**: Separate modal form with validation, integrated into existing list
+**Reason**: Consistent with existing UI patterns (ProductFormModal, WarehouseFormModal)
+**Alternative Considered**: Dedicated page for order creation (more clicks required)
+
+#### Decision 6: Stock Threshold Indicators
+**Chosen**: Color-coded cards with icons and percentages
+**Reason**: Universal color language (red=danger, yellow=warning, green=ok), accessible
+**Alternative Considered**: Text-only indicators (less visible)
+
+### Breaking Changes
+None in recent updates. All changes are additive and backward-compatible.
+
+### Migration Notes
+No database migrations required for testing infrastructure. All tests use mocked data.
+
+For new features:
+1. Alert system: Run existing migrations (already in schema)
+2. Purchase orders: No schema changes (uses existing tables)
+3. Warehouse/Supplier UI: No schema changes (CRUD only)
 
 ## 📝 Assumptions and Simplifications
 
