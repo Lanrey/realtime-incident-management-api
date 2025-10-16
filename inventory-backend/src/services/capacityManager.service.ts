@@ -1,6 +1,7 @@
 import { prisma } from '../config/database';
 import { CacheService, CACHE_KEYS, CACHE_TTL } from '../config/redis';
 import { logger } from '../utils/logger';
+import { appEvents } from '../utils/eventEmitter';
 
 export interface CapacityCheck {
   hasCapacity: boolean;
@@ -153,7 +154,7 @@ export class CapacityManagerService {
         _sum: { quantity: true },
       });
 
-      await prisma.warehouse.update({
+      const warehouse = await prisma.warehouse.update({
         where: { id: warehouseId },
         data: { currentStock: totalStock._sum.quantity || 0 },
       });
@@ -161,7 +162,27 @@ export class CapacityManagerService {
       // Invalidate cache
       await CacheService.del(CACHE_KEYS.WAREHOUSE_CAPACITY(warehouseId));
 
-      logger.info({ warehouseId, totalStock: totalStock._sum.quantity }, 'Warehouse stock updated');
+      // Emit SSE event for real-time notification
+      const percentage = warehouse.capacity > 0
+        ? (warehouse.currentStock / warehouse.capacity) * 100
+        : 0;
+
+      appEvents.emitWarehouseUpdated({
+        id: warehouse.id,
+        name: warehouse.name,
+        currentStock: warehouse.currentStock,
+        capacity: warehouse.capacity,
+        percentage,
+      });
+
+      logger.info(
+        {
+          warehouseId,
+          totalStock: totalStock._sum.quantity,
+          percentage: percentage.toFixed(1)
+        },
+        'Warehouse stock updated and broadcasted'
+      );
     } catch (error) {
       logger.error({ error, warehouseId }, 'Error updating warehouse stock');
       throw error;
@@ -187,7 +208,7 @@ export class CapacityManagerService {
         ? `Warehouse ${warehouse.name} has reached maximum capacity`
         : `Warehouse ${warehouse.name} is at ${((warehouse.currentStock / warehouse.capacity) * 100).toFixed(1)}% capacity`;
 
-    await prisma.alert.create({
+    const alert = await prisma.alert.create({
       data: {
         type: alertType,
         severity,
@@ -201,7 +222,16 @@ export class CapacityManagerService {
       },
     });
 
-    logger.warn({ warehouseId, alertType }, 'Capacity alert created');
+    // Emit SSE event for real-time notification
+    appEvents.emitAlertNew({
+      id: alert.id,
+      type: alert.type,
+      severity: alert.severity,
+      message: alert.message,
+      metadata: alert.metadata,
+    });
+
+    logger.warn({ warehouseId, alertType, alertId: alert.id }, 'Capacity alert created and broadcasted');
   }
 
   /**

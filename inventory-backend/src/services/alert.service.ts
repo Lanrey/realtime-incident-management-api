@@ -13,7 +13,38 @@ export interface QueryAlertsInput {
   sortOrder?: 'asc' | 'desc';
 }
 
+export interface CreateAlertInput {
+  type: string;
+  severity: 'INFO' | 'WARNING' | 'ERROR' | 'CRITICAL';
+  message: string;
+  metadata?: any;
+}
+
 export class AlertService {
+  async createAlert(data: CreateAlertInput) {
+    const alert = await prisma.alert.create({
+      data: {
+        type: data.type,
+        severity: data.severity,
+        message: data.message,
+        metadata: data.metadata || {},
+      },
+    });
+
+    logger.info({ alertId: alert.id, type: alert.type }, 'Alert created manually');
+
+    // Emit SSE event for real-time notification
+    appEvents.emitAlertNew({
+      id: alert.id,
+      type: alert.type,
+      severity: alert.severity,
+      message: alert.message,
+      metadata: alert.metadata,
+    });
+
+    return alert;
+  }
+
   async getAlerts(query: QueryAlertsInput) {
     const {
       page = 1,

@@ -1,8 +1,30 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
-import { alertService } from '../services/alert.service';
+import { alertService, CreateAlertInput } from '../services/alert.service';
 import { logger } from '../utils/logger';
 
 export class AlertController {
+  async createAlert(
+    request: FastifyRequest<{
+      Body: CreateAlertInput;
+    }>,
+    reply: FastifyReply
+  ) {
+    try {
+      const alert = await alertService.createAlert(request.body);
+
+      return reply.status(201).send({
+        success: true,
+        data: alert,
+      });
+    } catch (error: any) {
+      logger.error({ error }, 'Error creating alert');
+      return reply.status(500).send({
+        success: false,
+        error: { message: error.message || 'Failed to create alert' },
+      });
+    }
+  }
+
   async getAlerts(
     request: FastifyRequest<{
       Querystring: {
