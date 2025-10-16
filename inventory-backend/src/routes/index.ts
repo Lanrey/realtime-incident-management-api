@@ -3,6 +3,7 @@ import { productRoutes } from './product.routes';
 import { purchaseOrderRoutes } from './purchaseOrder.routes';
 import { warehouseRoutes } from './warehouse.routes';
 import { supplierRoutes } from './supplier.routes';
+import { alertRoutes } from './alert.routes';
 
 export async function registerRoutes(fastify: FastifyInstance) {
   // Health check endpoint
@@ -19,4 +20,5 @@ export async function registerRoutes(fastify: FastifyInstance) {
   fastify.register(purchaseOrderRoutes, { prefix: '/api/purchase-orders' });
   fastify.register(warehouseRoutes, { prefix: '/api/warehouses' });
   fastify.register(supplierRoutes, { prefix: '/api/suppliers' });
+  fastify.register(alertRoutes, { prefix: '/api/alerts' });
 }
