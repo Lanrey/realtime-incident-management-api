@@ -2,14 +2,17 @@ import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { productsApi } from '../../services/api';
 import { Product } from '../../types';
-import { Search, Plus, AlertTriangle } from 'lucide-react';
+import { Search, Plus, AlertTriangle, Edit } from 'lucide-react';
 import { StockAdjustmentModal } from './StockAdjustmentModal';
+import { ProductFormModal } from './ProductFormModal';
 
 export const ProductList: React.FC = () => {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [showAdjustModal, setShowAdjustModal] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ['products', page, search],
@@ -46,7 +49,10 @@ export const ProductList: React.FC = () => {
           <h1 className="text-3xl font-bold text-gray-900">Products</h1>
           <p className="text-gray-600 mt-1">Manage your product inventory</p>
         </div>
-        <button className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 flex items-center gap-2">
+        <button
+          onClick={() => setShowCreateModal(true)}
+          className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 flex items-center gap-2"
+        >
           <Plus size={20} />
           Add Product
         </button>
@@ -167,15 +173,24 @@ export const ProductList: React.FC = () => {
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
-                      <button
-                        onClick={() => {
-                          setSelectedProduct(product);
-                          setShowAdjustModal(true);
-                        }}
-                        className="text-primary-600 hover:text-primary-900 font-medium"
-                      >
-                        Adjust Stock
-                      </button>
+                      <div className="flex justify-end gap-3">
+                        <button
+                          onClick={() => setEditingProduct(product)}
+                          className="text-blue-600 hover:text-blue-900"
+                          title="Edit Product"
+                        >
+                          <Edit size={18} />
+                        </button>
+                        <button
+                          onClick={() => {
+                            setSelectedProduct(product);
+                            setShowAdjustModal(true);
+                          }}
+                          className="text-primary-600 hover:text-primary-900 font-medium"
+                        >
+                          Adjust Stock
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -218,6 +233,23 @@ export const ProductList: React.FC = () => {
             setShowAdjustModal(false);
             setSelectedProduct(null);
           }}
+        />
+      )}
+
+      {/* Create Product Modal */}
+      {showCreateModal && (
+        <ProductFormModal
+          onClose={() => setShowCreateModal(false)}
+          onSuccess={() => setShowCreateModal(false)}
+        />
+      )}
+
+      {/* Edit Product Modal */}
+      {editingProduct && (
+        <ProductFormModal
+          product={editingProduct}
+          onClose={() => setEditingProduct(null)}
+          onSuccess={() => setEditingProduct(null)}
         />
       )}
     </div>
