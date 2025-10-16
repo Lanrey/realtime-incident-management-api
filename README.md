@@ -54,7 +54,7 @@ Souk follows a **microservices-inspired architecture** with separated frontend a
 │  │Dashboard │  │  Products  │  │  Warehouses │  │ Suppliers │ │
 │  └──────────┘  └────────────┘  └─────────────┘  └───────────┘ │
 └────────────────────────────┬────────────────────────────────────┘
-                             │ HTTP/REST API + WebSocket
+                             │ HTTP/REST API + SSE
 ┌────────────────────────────▼────────────────────────────────────┐
 │                      Backend (Fastify)                          │
 │                         Port: 3000                              │
@@ -72,9 +72,9 @@ Souk follows a **microservices-inspired architecture** with separated frontend a
 └───────┬──────────┬──────────┬────────────┬──────────────────────┘
         │          │          │            │
    ┌────▼───┐  ┌──▼─────┐  ┌─▼────────┐  ┌▼──────────┐
-   │Postgres│  │ Redis  │  │ RabbitMQ │  │ WebSocket │
+   │Postgres│  │ Redis  │  │ RabbitMQ │  │    SSE    │
    │ :5432  │  │ :6379  │  │ :5672    │  │  Real-time│
-   │        │  │        │  │          │  │  Updates  │
+   │        │  │        │  │          │  │  Events   │
    └────────┘  └────────┘  └──────────┘  └───────────┘
 ```
 
@@ -84,7 +84,7 @@ Souk follows a **microservices-inspired architecture** with separated frontend a
 - **Technology**: React 18 with TypeScript, Vite
 - **State Management**: TanStack Query for server state, React hooks for local state
 - **Styling**: Tailwind CSS for responsive design
-- **Communication**: Axios for REST API, WebSocket client for real-time updates
+- **Communication**: Axios for REST API, EventSource API for SSE real-time updates
 - **Routing**: React Router for client-side navigation
 
 #### 2. **API Layer (Backend Controllers & Routes)**
@@ -138,7 +138,7 @@ Key services include:
 User → Frontend → POST /api/purchase-orders → Controller
   → Validation (Joi) → PurchaseOrderService → Check Capacity
   → Prisma → PostgreSQL (Insert) → Update Warehouse Stock
-  → WebSocket Broadcast → Frontend Update → User Notification
+  → SSE Event Broadcast → Frontend Update → User Notification
 ```
 
 #### Example 2: Automatic Reordering (Background Job)
@@ -146,7 +146,7 @@ User → Frontend → POST /api/purchase-orders → Controller
 Scheduler (Every 5 min) → StockMonitorService → Query Low Stock Products
   → Check Each Product Against Threshold → Create Purchase Order
   → RabbitMQ Job Queue → Process Order Creation → Update Database
-  → Create Alert → WebSocket Broadcast → Frontend Shows Alert
+  → Create Alert → SSE Event Broadcast → Frontend Shows Alert
 ```
 
 ### Key Components
@@ -156,7 +156,7 @@ Scheduler (Every 5 min) → StockMonitorService → Query Low Stock Products
 - **Database**: PostgreSQL with full-text search and indexing
 - **Cache**: Redis for session management and caching
 - **Message Queue**: RabbitMQ for asynchronous task processing
-- **Real-time**: WebSocket connections for live updates
+- **Real-time**: Server-Sent Events (SSE) for live updates
 
 ### Architectural Patterns
 
