@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { productsApi, warehousesApi } from '../../services/api';
 import { Product, Warehouse } from '../../types';
-import { X } from 'lucide-react';
+import { X, AlertTriangle, CheckCircle, TrendingUp, TrendingDown } from 'lucide-react';
 
 interface StockAdjustmentModalProps {
   product: Product;
@@ -83,21 +83,122 @@ export const StockAdjustmentModal: React.FC<StockAdjustmentModalProps> = ({
 
           {/* Current Stock */}
           <div className="mb-6">
-            <h4 className="font-medium text-gray-900 mb-3">Current Stock by Warehouse</h4>
+            <h4 className="font-medium text-gray-900 mb-3">
+              Current Stock by Warehouse
+              <span className="ml-2 text-xs text-gray-500">
+                (Reorder Threshold: {product.reorderThreshold} units)
+              </span>
+            </h4>
             <div className="space-y-2">
-              {stockByWarehouse.map((stock: any) => (
-                <div
-                  key={stock.id}
-                  className="flex justify-between items-center p-3 bg-gray-50 rounded"
-                >
-                  <span className="text-sm text-gray-700">
-                    {stock.warehouse.name}
-                  </span>
-                  <span className="font-medium text-gray-900">
-                    {stock.quantity} units
-                  </span>
+              {stockByWarehouse.length === 0 ? (
+                <div className="text-center py-4 text-gray-500 text-sm">
+                  No stock records found for this product
                 </div>
-              ))}
+              ) : (
+                stockByWarehouse.map((stock: any) => {
+                  const isLowStock = stock.quantity <= product.reorderThreshold;
+                  const isCritical = stock.quantity === 0;
+                  const percentOfThreshold = product.reorderThreshold > 0
+                    ? Math.round((stock.quantity / product.reorderThreshold) * 100)
+                    : 0;
+
+                  return (
+                    <div
+                      key={stock.id}
+                      className={`flex items-center justify-between p-3 rounded border ${
+                        isCritical
+                          ? 'bg-red-50 border-red-200'
+                          : isLowStock
+                          ? 'bg-yellow-50 border-yellow-200'
+                          : 'bg-green-50 border-green-200'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        {/* Status Icon */}
+                        {isCritical ? (
+                          <div className="text-red-600" title="Out of Stock">
+                            <X size={20} className="font-bold" />
+                          </div>
+                        ) : isLowStock ? (
+                          <div className="text-yellow-600" title="Low Stock">
+                            <AlertTriangle size={20} />
+                          </div>
+                        ) : (
+                          <div className="text-green-600" title="Normal Stock">
+                            <CheckCircle size={20} />
+                          </div>
+                        )}
+
+                        {/* Warehouse Name */}
+                        <div>
+                          <span className="text-sm font-medium text-gray-900">
+                            {stock.warehouse.name}
+                          </span>
+                          <div className="text-xs text-gray-600">
+                            {stock.warehouse.location}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Stock Info */}
+                      <div className="text-right">
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={`font-bold ${
+                              isCritical
+                                ? 'text-red-700'
+                                : isLowStock
+                                ? 'text-yellow-700'
+                                : 'text-green-700'
+                            }`}
+                          >
+                            {stock.quantity}
+                          </span>
+                          <span className="text-sm text-gray-600">units</span>
+                        </div>
+
+                        {/* Status Badge */}
+                        <div className="mt-1">
+                          {isCritical ? (
+                            <span className="text-xs px-2 py-0.5 bg-red-100 text-red-800 rounded-full font-medium">
+                              Out of Stock
+                            </span>
+                          ) : isLowStock ? (
+                            <span className="text-xs px-2 py-0.5 bg-yellow-100 text-yellow-800 rounded-full font-medium flex items-center gap-1">
+                              <TrendingDown size={12} />
+                              Low ({percentOfThreshold}%)
+                            </span>
+                          ) : (
+                            <span className="text-xs px-2 py-0.5 bg-green-100 text-green-800 rounded-full font-medium flex items-center gap-1">
+                              <TrendingUp size={12} />
+                              Normal ({percentOfThreshold}%)
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            {/* Legend */}
+            <div className="mt-3 p-3 bg-gray-50 rounded-lg">
+              <div className="text-xs font-semibold text-gray-700 mb-2">Status Legend:</div>
+              <div className="grid grid-cols-3 gap-2 text-xs">
+                <div className="flex items-center gap-1">
+                  <CheckCircle size={14} className="text-green-600" />
+                  <span className="text-gray-600">Above threshold</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <AlertTriangle size={14} className="text-yellow-600" />
+                  <span className="text-gray-600">Below threshold</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <X size={14} className="text-red-600 font-bold" />
+                  <span className="text-gray-600">Out of stock</span>
+                </div>
+              </div>
             </div>
           </div>
 
