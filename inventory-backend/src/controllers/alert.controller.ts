@@ -10,7 +10,7 @@ export class AlertController {
         limit?: number;
         type?: string;
         severity?: string;
-        isResolved?: boolean;
+        isResolved?: string | boolean;
         sortBy?: string;
         sortOrder?: 'asc' | 'desc';
       };
@@ -18,7 +18,14 @@ export class AlertController {
     reply: FastifyReply
   ) {
     try {
-      const result = await alertService.getAlerts(request.query);
+      const query = { ...request.query };
+
+      // Convert isResolved string to boolean
+      if (query.isResolved !== undefined) {
+        query.isResolved = query.isResolved === 'true' || query.isResolved === true;
+      }
+
+      const result = await alertService.getAlerts(query);
 
       return reply.send({
         success: true,
