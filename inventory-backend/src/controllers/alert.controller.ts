@@ -6,8 +6,8 @@ export class AlertController {
   async getAlerts(
     request: FastifyRequest<{
       Querystring: {
-        page?: number;
-        limit?: number;
+        page?: string | number;
+        limit?: string | number;
         type?: string;
         severity?: string;
         isResolved?: string | boolean;
@@ -18,9 +18,17 @@ export class AlertController {
     reply: FastifyReply
   ) {
     try {
-      const query = { ...request.query };
+      const query: any = { ...request.query };
 
-      // Convert isResolved string to boolean
+      // Convert query string parameters to proper types
+      if (query.page !== undefined) {
+        query.page = typeof query.page === 'string' ? parseInt(query.page, 10) : query.page;
+      }
+
+      if (query.limit !== undefined) {
+        query.limit = typeof query.limit === 'string' ? parseInt(query.limit, 10) : query.limit;
+      }
+
       if (query.isResolved !== undefined) {
         query.isResolved = query.isResolved === 'true' || query.isResolved === true;
       }
