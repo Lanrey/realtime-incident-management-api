@@ -34,10 +34,61 @@ interface SSEEvent {
   };
 }
 
+// Shared AudioContext to comply with browser autoplay policies
+let sharedAudioContext: (AudioContext & { resume: () => Promise<void>; state: string }) | null = null;
+let audioUnlocked = false;
+
+const ensureAudioContext = () => {
+  if (!sharedAudioContext) {
+    const Ctx = (window as any).AudioContext || (window as any).webkitAudioContext;
+    if (!Ctx) {
+      throw new Error('Web Audio API is not supported in this browser');
+    }
+    sharedAudioContext = new Ctx();
+  }
+  return sharedAudioContext as AudioContext;
+};
+
+// Attach one-time user gesture listeners to unlock audio on first interaction
+const unlockAudioContextOnce = () => {
+  try {
+    const ctx = ensureAudioContext();
+    if (ctx.state === 'running') {
+      audioUnlocked = true;
+      return;
+    }
+
+    const tryResume = () => {
+      ctx.resume().then(() => {
+        audioUnlocked = true;
+      }).catch(() => {
+        // ignore
+      }).finally(() => {
+        document.removeEventListener('click', tryResume);
+        document.removeEventListener('touchstart', tryResume);
+        document.removeEventListener('keydown', tryResume);
+      });
+    };
+
+    document.addEventListener('click', tryResume, { once: true });
+    document.addEventListener('touchstart', tryResume, { once: true });
+    document.addEventListener('keydown', tryResume, { once: true });
+  } catch {
+    // no-op
+  }
+};
+
 const playNotificationSound = () => {
   try {
-    // Use Web Audio API to generate a pleasant notification beep
-    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const audioContext = ensureAudioContext();
+
+    // If not yet unlocked, attempt a best-effort resume; if still suspended, skip to avoid errors
+    if ((audioContext as any).state === 'suspended' && !audioUnlocked) {
+      (audioContext as any).resume?.().catch(() => {});
+      if ((audioContext as any).state === 'suspended') {
+        return;
+      }
+    }
 
     // Create oscillator for the beep sound
     const oscillator = audioContext.createOscillator();
@@ -161,6 +212,36 @@ export const useSSE = (onEvent?: (eventType: string, data: any) => void) => {
         );
         break;
 
+      case 'product':
+        toast.success(
+          `New Product Created: ${data.name} (SKU: ${data.sku})`,
+          {
+            icon: '🆕',
+            duration: 5000,
+          }
+        );
+        break;
+
+      case 'supplier':
+        toast.success(
+          `New Supplier Created: ${data.name}`,
+          {
+            icon: '🆕',
+            duration: 5000,
+          }
+        );
+        break;
+
+      case 'warehouse-created':
+        toast.success(
+          `New Warehouse Created: ${data.name} (Capacity: ${data.capacity})`,
+          {
+            icon: '🆕',
+            duration: 5000,
+          }
+        );
+        break;
+
       default:
         toast.info(`Event: ${eventType}`, {
           icon: '🔔',
@@ -176,7 +257,7 @@ export const useSSE = (onEvent?: (eventType: string, data: any) => void) => {
 
     try {
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
-      const eventSource = new EventSource(`${apiUrl}/api/events`);
+      const eventSource = new EventSource(`${apiUrl}/api/events`, { withCredentials: true });
 
       eventSource.onopen = () => {
         console.log('✅ SSE Connected');
@@ -214,6 +295,27 @@ export const useSSE = (onEvent?: (eventType: string, data: any) => void) => {
         console.log('🏭 Warehouse update:', data);
         showNotification('warehouse', data);
         onEvent?.('warehouse', data);
+      });
+
+      eventSource.addEventListener('product', (event) => {
+        const data = JSON.parse(event.data);
+        console.log('🆕 Product created:', data);
+        showNotification('product', data);
+        onEvent?.('product', data);
+      });
+
+      eventSource.addEventListener('supplier', (event) => {
+        const data = JSON.parse(event.data);
+        console.log('🆕 Supplier created:', data);
+        showNotification('supplier', data);
+        onEvent?.('supplier', data);
+      });
+
+      eventSource.addEventListener('warehouse-created', (event) => {
+        const data = JSON.parse(event.data);
+        console.log('🆕 Warehouse created:', data);
+        showNotification('warehouse-created', data);
+        onEvent?.('warehouse-created', data);
       });
 
       eventSource.onerror = (error) => {
@@ -255,6 +357,8 @@ export const useSSE = (onEvent?: (eventType: string, data: any) => void) => {
   }, []);
 
   useEffect(() => {
+    // Prime and unlock audio context on first user interaction so sounds can play reliably
+    unlockAudioContextOnce();
     connect();
 
     return () => {

@@ -5,6 +5,7 @@ export const createPurchaseOrderSchema = Joi.object({
   supplierId: Joi.string().uuid().required(),
   warehouseId: Joi.string().uuid().required(),
   quantityOrdered: Joi.number().integer().min(1).required(),
+    expectedArrivalDate: Joi.date().required(),
   notes: Joi.string().optional(),
 });
 
@@ -32,6 +33,7 @@ export interface CreatePurchaseOrderInput {
   supplierId: string;
   warehouseId: string;
   quantityOrdered: number;
+  expectedArrivalDate: string;
   notes?: string;
 }
 

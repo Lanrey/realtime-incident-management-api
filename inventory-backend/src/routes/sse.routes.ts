@@ -13,6 +13,9 @@ import { logger } from '../utils/logger';
  * - alert: New alerts and alert resolutions
  * - order: Purchase order updates
  * - warehouse: Warehouse capacity updates
+ * - product: Product creation
+ * - supplier: Supplier creation
+ * - warehouse-created: Warehouse creation
  */
 
 interface SSEClient {
@@ -36,6 +39,18 @@ export async function sseRoutes(fastify: FastifyInstance) {
     reply.raw.setHeader('Cache-Control', 'no-cache, no-transform');
     reply.raw.setHeader('Connection', 'keep-alive');
     reply.raw.setHeader('X-Accel-Buffering', 'no'); // Disable nginx buffering
+
+    // Explicit CORS headers for SSE (since we stream via raw response)
+    const origin = (request.headers as any).origin as string | undefined;
+    if (origin) {
+      // Mirror the request origin (allowed by global CORS policy)
+      reply.raw.setHeader('Access-Control-Allow-Origin', origin);
+      reply.raw.setHeader('Vary', 'Origin');
+    }
+    reply.raw.setHeader('Access-Control-Allow-Credentials', 'true');
+
+    // Take over the response lifecycle for streaming
+    reply.hijack();
 
     // Send initial connection event
     reply.raw.write(`event: connected\n`);
@@ -77,6 +92,9 @@ export async function sseRoutes(fastify: FastifyInstance) {
     const orderCreatedListener = (data: any) => sendEvent('order', data);
     const orderUpdatedListener = (data: any) => sendEvent('order', data);
     const warehouseUpdatedListener = (data: any) => sendEvent('warehouse', data);
+    const productCreatedListener = (data: any) => sendEvent('product', data);
+    const supplierCreatedListener = (data: any) => sendEvent('supplier', data);
+    const warehouseCreatedListener = (data: any) => sendEvent('warehouse-created', data);
 
     // Register event listeners
     appEvents.on('stock:update', stockUpdateListener);
@@ -85,6 +103,9 @@ export async function sseRoutes(fastify: FastifyInstance) {
     appEvents.on('order:created', orderCreatedListener);
     appEvents.on('order:updated', orderUpdatedListener);
     appEvents.on('warehouse:updated', warehouseUpdatedListener);
+    appEvents.on('product:created', productCreatedListener);
+    appEvents.on('supplier:created', supplierCreatedListener);
+    appEvents.on('warehouse:created', warehouseCreatedListener);
 
     // Cleanup function
     const cleanup = () => {
@@ -99,6 +120,9 @@ export async function sseRoutes(fastify: FastifyInstance) {
       appEvents.off('order:created', orderCreatedListener);
       appEvents.off('order:updated', orderUpdatedListener);
       appEvents.off('warehouse:updated', warehouseUpdatedListener);
+      appEvents.off('product:created', productCreatedListener);
+      appEvents.off('supplier:created', supplierCreatedListener);
+      appEvents.off('warehouse:created', warehouseCreatedListener);
 
       connectedClients.delete(client);
       logger.info({ clientId, totalClients: connectedClients.size }, 'SSE client disconnected');

@@ -30,10 +30,64 @@ async function buildServer() {
     disableRequestLogging: env.NODE_ENV === 'production',
   });
 
-  // Register plugins
+  // Parse allowed origins from comma-separated string
+  const allowedOrigins = env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim()).filter(Boolean);
+
+  console.log(allowedOrigins);
+
+  // Register CORS plugin
   await fastify.register(cors, {
-    origin: env.NODE_ENV === 'development' ? '*' : ['http://localhost:5173'],
+    origin: (origin, cb) => {
+      // Allow requests with no origin (like mobile apps, Postman, curl)
+      if (!origin) {
+        cb(null, true);
+        return;
+      }
+
+      console.log('origin', origin);
+
+      // Some environments send "null" origin (e.g., file://, certain iframes)
+      if (origin === 'null') {
+        cb(null, true);
+        return;
+      }
+
+      let hostname = '';
+      try {
+        hostname = new URL(origin).hostname;
+      } catch {
+        // If origin is malformed, fall back to explicit allow-list check
+        if (allowedOrigins.includes(origin)) {
+          cb(null, true);
+          return;
+        }
+      }
+
+      if (hostname === 'localhost' || hostname === '127.0.0.1') {
+        cb(null, true);
+        return;
+      }
+
+      // In development, allow all origins
+      if (env.NODE_ENV === 'development') {
+        cb(null, true);
+        return;
+      }
+
+      // In production, check against allowed origins
+      if (allowedOrigins.includes(origin)) {
+        cb(null, true);
+        return;
+      }
+
+      // Reject other origins
+      cb(new Error('Not allowed by CORS'), false);
+    },
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With'],
+    exposedHeaders: ['Content-Range', 'X-Content-Range'],
+    maxAge: 86400, // 24 hours
   });
 
   await fastify.register(rateLimit, {

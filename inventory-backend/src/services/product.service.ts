@@ -1,6 +1,7 @@
 import { prisma } from '../config/database';
 import { CacheService, CACHE_KEYS, CACHE_TTL } from '../config/redis';
 import { logger } from '../utils/logger';
+import { appEvents } from '../utils/eventEmitter';
 import { Prisma } from '@prisma/client';
 import type {
   CreateProductInput,
@@ -18,6 +19,15 @@ export class ProductService {
     });
 
     logger.info({ productId: product.id }, 'Product created');
+
+    // Emit SSE event for product creation
+    appEvents.emitProductCreated({
+      id: product.id,
+      sku: product.sku,
+      name: product.name,
+      reorderThreshold: product.reorderThreshold,
+    });
+
     return product;
   }
 

@@ -13,6 +13,8 @@ const envSchema = Joi.object({
   DEFAULT_LEAD_TIME_DAYS: Joi.number().default(3),
   MAX_CONCURRENT_ORDERS: Joi.number().default(10),
   LOG_LEVEL: Joi.string().default('info'),
+  CORS_ORIGIN: Joi.string().default('http://localhost:5173,http://localhost:5174, http://localhost:3000'),
+  ALLOWED_ORIGINS: Joi.string().default('http://localhost:5173,http://localhost:5174, http://localhost:3000'),
 }).unknown(true);
 
 export interface Env {
@@ -28,6 +30,8 @@ export interface Env {
   DEFAULT_LEAD_TIME_DAYS: number;
   MAX_CONCURRENT_ORDERS: number;
   LOG_LEVEL: string;
+  CORS_ORIGIN: string;
+  ALLOWED_ORIGINS: string;
 }
 
 export function loadEnv(): Env {

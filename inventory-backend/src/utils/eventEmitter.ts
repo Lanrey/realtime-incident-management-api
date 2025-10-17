@@ -14,6 +14,9 @@ import { logger } from './logger';
  * - order:created - Purchase order created
  * - order:updated - Purchase order status changed
  * - warehouse:updated - Warehouse capacity changed
+ * - product:created - Product created
+ * - supplier:created - Supplier created
+ * - warehouse:created - Warehouse created
  */
 
 class AppEventEmitter extends EventEmitter {
@@ -100,6 +103,45 @@ class AppEventEmitter extends EventEmitter {
   }) {
     logger.debug({ data }, 'Emitting warehouse:updated event');
     this.emit('warehouse:updated', data);
+  }
+
+  /**
+   * Emit product created event
+   */
+  emitProductCreated(data: {
+    id: string;
+    sku: string;
+    name: string;
+    reorderThreshold: number;
+  }) {
+    logger.debug({ data }, 'Emitting product:created event');
+    this.emit('product:created', data);
+  }
+
+  /**
+   * Emit supplier created event
+   */
+  emitSupplierCreated(data: {
+    id: string;
+    name: string;
+    contactEmail: string;
+    contactPhone: string;
+  }) {
+    logger.debug({ data }, 'Emitting supplier:created event');
+    this.emit('supplier:created', data);
+  }
+
+  /**
+   * Emit warehouse created event
+   */
+  emitWarehouseCreated(data: {
+    id: string;
+    name: string;
+    location: string;
+    capacity: number;
+  }) {
+    logger.debug({ data }, 'Emitting warehouse:created event');
+    this.emit('warehouse:created', data);
   }
 }
 

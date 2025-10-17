@@ -1,6 +1,7 @@
 import { prisma } from '../config/database';
 import { CacheService, CACHE_KEYS, CACHE_TTL } from '../config/redis';
 import { logger } from '../utils/logger';
+import { appEvents } from '../utils/eventEmitter';
 import { Prisma } from '@prisma/client';
 import type {
   CreateSupplierInput,
@@ -15,6 +16,15 @@ export class SupplierService {
     });
 
     logger.info({ supplierId: supplier.id }, 'Supplier created');
+
+    // Emit SSE event for supplier creation
+    appEvents.emitSupplierCreated({
+      id: supplier.id,
+      name: supplier.name,
+      contactEmail: supplier.contactEmail,
+      contactPhone: supplier.contactPhone,
+    });
+
     return supplier;
   }
 

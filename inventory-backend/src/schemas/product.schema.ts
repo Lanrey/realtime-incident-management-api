@@ -8,6 +8,7 @@ export const createProductSchema = Joi.object({
   reorderQuantity: Joi.number().integer().min(1).required(),
   leadTimeDays: Joi.number().integer().min(1).default(3),
   unitPrice: Joi.number().min(0).default(0),
+    isActive: Joi.boolean().default(false),
   defaultSupplierId: Joi.string().uuid().required(),
 });
 
@@ -20,6 +21,7 @@ export const updateProductSchema = Joi.object({
   leadTimeDays: Joi.number().integer().min(1).optional(),
   unitPrice: Joi.number().min(0).optional(),
   defaultSupplierId: Joi.string().uuid().optional(),
+  isActive: Joi.boolean().optional(),
 });
 
 export const adjustStockSchema = Joi.object({
@@ -49,6 +51,7 @@ export interface CreateProductInput {
   leadTimeDays?: number;
   unitPrice?: number;
   defaultSupplierId: string;
+  isActive?: boolean;
 }
 
 export interface UpdateProductInput {
@@ -60,6 +63,7 @@ export interface UpdateProductInput {
   leadTimeDays?: number;
   unitPrice?: number;
   defaultSupplierId?: string;
+  isActive?: boolean;
 }
 
 export interface AdjustStockInput {

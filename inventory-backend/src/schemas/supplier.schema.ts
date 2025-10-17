@@ -5,6 +5,7 @@ export const createSupplierSchema = Joi.object({
   contactEmail: Joi.string().email().required(),
   contactPhone: Joi.string().min(1).max(50).required(),
   address: Joi.string().optional(),
+    isActive: Joi.boolean().optional(),
 });
 
 export const updateSupplierSchema = Joi.object({
@@ -12,6 +13,7 @@ export const updateSupplierSchema = Joi.object({
   contactEmail: Joi.string().email().optional(),
   contactPhone: Joi.string().min(1).max(50).optional(),
   address: Joi.string().optional(),
+  isActive: Joi.boolean().optional(),
 });
 
 export const querySuppliersSchema = Joi.object({
@@ -27,6 +29,7 @@ export interface CreateSupplierInput {
   contactEmail: string;
   contactPhone: string;
   address?: string;
+  isActive?: boolean;
 }
 
 export interface UpdateSupplierInput {
@@ -34,6 +37,7 @@ export interface UpdateSupplierInput {
   contactEmail?: string;
   contactPhone?: string;
   address?: string;
+  isActive?: boolean;
 }
 
 export interface QuerySuppliersInput {

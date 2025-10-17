@@ -1,6 +1,7 @@
 import { prisma } from '../config/database';
 import { CacheService, CACHE_KEYS, CACHE_TTL } from '../config/redis';
 import { logger } from '../utils/logger';
+import { appEvents } from '../utils/eventEmitter';
 import { Prisma } from '@prisma/client';
 import type {
   CreateWarehouseInput,
@@ -15,6 +16,15 @@ export class WarehouseService {
     });
 
     logger.info({ warehouseId: warehouse.id }, 'Warehouse created');
+
+    // Emit SSE event for warehouse creation
+    appEvents.emitWarehouseCreated({
+      id: warehouse.id,
+      name: warehouse.name,
+      location: warehouse.location,
+      capacity: warehouse.capacity,
+    });
+
     return warehouse;
   }
 

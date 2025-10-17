@@ -4,12 +4,14 @@ export const createWarehouseSchema = Joi.object({
   name: Joi.string().min(1).max(255).required(),
   location: Joi.string().min(1).max(500).required(),
   capacity: Joi.number().integer().min(1).required(),
+    isActive: Joi.boolean().optional(),
 });
 
 export const updateWarehouseSchema = Joi.object({
   name: Joi.string().min(1).max(255).optional(),
   location: Joi.string().min(1).max(500).optional(),
   capacity: Joi.number().integer().min(1).optional(),
+  isActive: Joi.boolean().optional(),
 });
 
 export const queryWarehousesSchema = Joi.object({
@@ -24,12 +26,14 @@ export interface CreateWarehouseInput {
   name: string;
   location: string;
   capacity: number;
+  isActive?: boolean;
 }
 
 export interface UpdateWarehouseInput {
   name?: string;
   location?: string;
   capacity?: number;
+  isActive?: boolean;
 }
 
 export interface QueryWarehousesInput {

@@ -27,6 +27,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
     defaultSupplierId: product?.defaultSupplierId || '',
     isActive: product?.isActive ?? true,
   });
+  const [useCustomSupplier, setUseCustomSupplier] = useState(!!product?.defaultSupplierId);
   const [error, setError] = useState<string | null>(null);
 
   const { data: suppliersData } = useQuery({
@@ -39,6 +40,13 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
 
   const suppliers = suppliersData?.data || [];
   const activeSuppliers = suppliers.filter((s: Supplier) => s.isActive);
+
+  // Auto-select first supplier if available and not in edit mode
+  React.useEffect(() => {
+    if (!product && activeSuppliers.length > 0 && !formData.defaultSupplierId && !useCustomSupplier) {
+      setFormData(prev => ({ ...prev, defaultSupplierId: activeSuppliers[0].id }));
+    }
+  }, [activeSuppliers, product, formData.defaultSupplierId, useCustomSupplier]);
 
   const mutation = useMutation({
     mutationFn: async (data: any) => {
@@ -155,19 +163,72 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Default Supplier <span className="text-red-500">*</span>
               </label>
-              <select
-                required
-                value={formData.defaultSupplierId}
-                onChange={(e) => setFormData({ ...formData, defaultSupplierId: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-              >
-                <option value="">Select supplier...</option>
-                {activeSuppliers.map((supplier: Supplier) => (
-                  <option key={supplier.id} value={supplier.id}>
-                    {supplier.name}
-                  </option>
-                ))}
-              </select>
+
+              {/* Show default supplier or allow selection */}
+              {!useCustomSupplier && activeSuppliers.length > 0 ? (
+                <div>
+                  <div className="flex items-center justify-between px-3 py-2 border border-gray-300 rounded-lg bg-gray-50">
+                    <span className="text-sm text-gray-900">
+                      {activeSuppliers[0]?.name || 'No suppliers available'}
+                    </span>
+                    <span className="text-xs text-gray-500 bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                      Default
+                    </span>
+                  </div>
+                  <div className="mt-2 flex items-center">
+                    <input
+                      type="checkbox"
+                      id="useCustomSupplier"
+                      checked={useCustomSupplier}
+                      onChange={(e) => {
+                        setUseCustomSupplier(e.target.checked);
+                        if (!e.target.checked && activeSuppliers.length > 0) {
+                          setFormData({ ...formData, defaultSupplierId: activeSuppliers[0].id });
+                        }
+                      }}
+                      className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+                    />
+                    <label htmlFor="useCustomSupplier" className="ml-2 text-sm text-gray-700">
+                      Choose a different supplier
+                    </label>
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <select
+                    required
+                    value={formData.defaultSupplierId}
+                    onChange={(e) => setFormData({ ...formData, defaultSupplierId: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  >
+                    <option value="">Select supplier...</option>
+                    {activeSuppliers.map((supplier: Supplier) => (
+                      <option key={supplier.id} value={supplier.id}>
+                        {supplier.name}
+                      </option>
+                    ))}
+                  </select>
+                  {!product && (
+                    <div className="mt-2 flex items-center">
+                      <input
+                        type="checkbox"
+                        id="useCustomSupplier"
+                        checked={useCustomSupplier}
+                        onChange={(e) => {
+                          setUseCustomSupplier(e.target.checked);
+                          if (!e.target.checked && activeSuppliers.length > 0) {
+                            setFormData({ ...formData, defaultSupplierId: activeSuppliers[0].id });
+                          }
+                        }}
+                        className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+                      />
+                      <label htmlFor="useCustomSupplier" className="ml-2 text-sm text-gray-700">
+                        Use default supplier
+                      </label>
+                    </div>
+                  )}
+                </div>
+              )}
               <p className="mt-1 text-xs text-gray-500">
                 ℹ️ Supplier used for automatic reordering
               </p>
@@ -273,8 +334,14 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
             <button
               type="submit"
               disabled={mutation.isPending}
-              className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50"
+              className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
+              {mutation.isPending && (
+                <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+              )}
               {mutation.isPending
                 ? 'Saving...'
                 : product
