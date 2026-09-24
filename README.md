@@ -1,4 +1,4 @@
-# Souk - Inventory Management System
+# Inventory Management System
 
 A modern, full-stack inventory management system built with microservices architecture, featuring real-time stock monitoring, automated purchase order generation, and capacity management.
 
